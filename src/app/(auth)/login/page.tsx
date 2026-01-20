@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+
 import { Button } from "@/components/ui/button";
 import {
     Card,
@@ -26,8 +29,37 @@ export default function LoginPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                    {/* Error Alert */}
+                    {(() => {
+                        const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+                        const error = params?.get("error");
+                        if (error) {
+                            return (
+                                <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md border border-destructive/20 text-center">
+                                    {error === "oauth_error" ? "Google Login failed. Please try again." :
+                                        error === "no_user_info" ? "Could not retrieve user info." :
+                                            "Authentication failed."}
+                                </div>
+                            );
+                        }
+                        return null;
+                    })()}
+
                     <div className="grid grid-cols-2 gap-4">
-                        <Button variant="outline" className="w-full gap-2">
+
+                        <Button
+                            variant="outline"
+                            className="w-full gap-2"
+                            onClick={() => {
+                                const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+                                const returnTo = params?.get("return_to");
+                                let url = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/login/google`;
+                                if (returnTo) {
+                                    url += `?return_to=${encodeURIComponent(returnTo)}`;
+                                }
+                                window.location.href = url;
+                            }}
+                        >
                             <FontAwesomeIcon icon={faGoogle} className="h-4 w-4" />
                             Google
                         </Button>
@@ -36,6 +68,7 @@ export default function LoginPage() {
                             Discord
                         </Button>
                     </div>
+
                     <div className="relative">
                         <div className="absolute inset-0 flex items-center">
                             <span className="w-full border-t" />

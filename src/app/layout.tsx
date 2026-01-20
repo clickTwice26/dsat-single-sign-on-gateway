@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Source_Serif_4 } from "next/font/google";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 import "@fortawesome/fontawesome-svg-core/styles.css";
 import { config } from "@fortawesome/fontawesome-svg-core";
@@ -30,8 +31,10 @@ export default function RootLayout({
     <html lang="en">
       <body
         className={`${spaceGrotesk.variable} ${sourceSerif4.variable} font-sans antialiased`}
+        suppressHydrationWarning
       >
         {children}
+        <Toaster />
       </body>
     </html>
   );
