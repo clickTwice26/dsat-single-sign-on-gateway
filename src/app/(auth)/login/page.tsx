@@ -14,13 +14,20 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faGoogle, faDiscord } from "@fortawesome/free-brands-svg-icons";
+import { faGoogle } from "@fortawesome/free-brands-svg-icons";
 
 export default function LoginPage() {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-muted/40 p-4">
             <Card className="w-full max-w-md">
                 <CardHeader className="space-y-1">
+                    <div className="flex justify-center mb-2">
+                        <img
+                            src="/favicon.png"
+                            alt="Logo"
+                            className="h-12 w-12 object-contain"
+                        />
+                    </div>
                     <CardTitle className="text-2xl font-bold tracking-tight text-center">
                         Welcome back
                     </CardTitle>
@@ -45,7 +52,7 @@ export default function LoginPage() {
                         return null;
                     })()}
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-4">
 
                         <Button
                             variant="outline"
@@ -62,10 +69,6 @@ export default function LoginPage() {
                         >
                             <FontAwesomeIcon icon={faGoogle} className="h-4 w-4" />
                             Google
-                        </Button>
-                        <Button variant="outline" className="w-full gap-2">
-                            <FontAwesomeIcon icon={faDiscord} className="h-4 w-4" />
-                            Discord
                         </Button>
                     </div>
 

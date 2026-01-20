@@ -78,6 +78,12 @@ export function UserManagementView() {
     const [loading, setLoading] = useState(true);
     const [refreshTrigger, setRefreshTrigger] = useState(0); // To force refresh
 
+    // Filters
+    const [searchQuery, setSearchQuery] = useState("");
+    const [roleFilter, setRoleFilter] = useState("all");
+    const [statusFilter, setStatusFilter] = useState("all");
+    const [availableRoles, setAvailableRoles] = useState<string[]>([]);
+
     // Pagination state
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(10);
@@ -102,18 +108,27 @@ export function UserManagementView() {
                 const statsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/stats`, { headers });
                 if (statsRes.ok) setStats(await statsRes.json());
 
-                // Fetch Users with Pagination
-                const skip = (page - 1) * limit;
-                const usersRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users?skip=${skip}&limit=${limit}`, { headers });
+                // Fetch dynamic roles
+                const rolesRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/roles`, { headers });
+                if (rolesRes.ok) setAvailableRoles(await rolesRes.json());
+
+                // Build query params
+                const params = new URLSearchParams();
+                params.append("skip", ((page - 1) * limit).toString());
+                params.append("limit", limit.toString());
+                if (searchQuery) params.append("search", searchQuery);
+                if (roleFilter !== "all") params.append("role", roleFilter);
+                if (statusFilter !== "all") params.append("is_active", statusFilter === "active" ? "true" : "false");
+
+                // Fetch Users with Pagination & Filters
+                const usersRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users?${params.toString()}`, { headers });
 
                 if (usersRes.ok) {
                     const data = await usersRes.json();
                     if (data.items) {
-                        // New format
                         setUsers(data.items);
                         setTotal(data.total);
                     } else {
-                        // Fallback to old list format if backend not updated
                         setUsers(data);
                         setTotal(data.length);
                     }
@@ -127,8 +142,65 @@ export function UserManagementView() {
                 setLoading(false);
             }
         };
-        fetchData();
-    }, [page, limit, refreshTrigger]);
+        // Debounce search could be added here, but for now rely on effect dependency
+        const timeoutId = setTimeout(() => fetchData(), 300);
+        return () => clearTimeout(timeoutId);
+    }, [page, limit, refreshTrigger, searchQuery, roleFilter, statusFilter]);
+
+    const handleExport = async () => {
+        try {
+            const token = localStorage.getItem("accessToken");
+            const headers = { 'Authorization': `Bearer ${token}` };
+
+            // Fetch all matching users for export (adjust limit if needed or implement backend specific export)
+            // For simplicity, fetching a large limit here.
+
+            // Build query params
+            const params = new URLSearchParams();
+            params.append("skip", "0");
+            params.append("limit", "10000"); // Large limit for export
+            if (searchQuery) params.append("search", searchQuery);
+            if (roleFilter !== "all") params.append("role", roleFilter);
+            if (statusFilter !== "all") params.append("is_active", statusFilter === "active" ? "true" : "false");
+
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users?${params.toString()}`, { headers });
+
+            if (!res.ok) throw new Error("Failed to fetch data export");
+
+            const data = await res.json();
+            const items = data.items || data;
+
+            // Convert to CSV
+            const csvRows = [];
+            const headersRow = ["ID", "Full Name", "Email", "Role", "Status", "Joined At"];
+            csvRows.push(headersRow.join(","));
+
+            for (const row of items) {
+                csvRows.push([
+                    row.id,
+                    `"${row.full_name || ''}"`, // Quote to handle commas in names
+                    row.email,
+                    row.role,
+                    row.is_active ? "Active" : "Inactive",
+                    row.created_at
+                ].join(","));
+            }
+
+            const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.setAttribute("hidden", "");
+            a.setAttribute("href", url);
+            a.setAttribute("download", "users_export.csv");
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            toast.success("Export downloaded");
+
+        } catch (error) {
+            toast.error("Export failed");
+        }
+    };
 
     const handleUpdateUser = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -236,12 +308,54 @@ export function UserManagementView() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Users Directory</CardTitle>
-                    <CardDescription>
-                        Manage system users, update roles, and view status.
-                    </CardDescription>
+                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                        <div>
+                            <CardTitle>Users Directory</CardTitle>
+                            <CardDescription>
+                                Manage system users, update roles, and view status.
+                            </CardDescription>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                            <Button variant="outline" size="sm" onClick={handleExport}>
+                                Export CSV
+                            </Button>
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                    {/* Filters */}
+                    <div className="flex flex-col md:flex-row gap-4">
+                        <div className="flex-1">
+                            <Input
+                                placeholder="Search by name or email..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full"
+                            />
+                        </div>
+                        <Select value={roleFilter} onValueChange={setRoleFilter}>
+                            <SelectTrigger className="w-[150px]">
+                                <SelectValue placeholder="Role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Roles</SelectItem>
+                                {availableRoles.map(role => (
+                                    <SelectItem key={role} value={role} className="capitalize">{role}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="w-[150px]">
+                                <SelectValue placeholder="Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Status</SelectItem>
+                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="inactive">Inactive</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -260,10 +374,10 @@ export function UserManagementView() {
                                     </TableCell>
                                 </TableRow>
                             ) : users.map((u) => (
-                                <TableRow key={u.id}>
+                                <TableRow key={u.id || u.email}>
                                     <TableCell className="flex items-center gap-3">
                                         <Avatar>
-                                            <AvatarImage src={u.profile_image} />
+                                            <AvatarImage src={u.profile_image} referrerPolicy="no-referrer" />
                                             <AvatarFallback>{u.full_name?.charAt(0)}</AvatarFallback>
                                         </Avatar>
                                         <div>

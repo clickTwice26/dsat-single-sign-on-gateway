@@ -20,6 +20,11 @@ const sourceSerif4 = Source_Serif_4({
 export const metadata: Metadata = {
   title: "DSAT Auth Server",
   description: "SSO Authentication Server",
+  icons: {
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
+  },
 };
 
 export default function RootLayout({
@@ -29,6 +34,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="icon" href="/favicon.png" sizes="any" />
+      </head>
       <body
         className={`${spaceGrotesk.variable} ${sourceSerif4.variable} font-sans antialiased`}
         suppressHydrationWarning
