@@ -127,6 +127,15 @@ export default function DashboardLayout({
                                     User Management
                                 </Button>
                             </Link>
+                            <Link href="/dashboard/developer">
+                                <Button
+                                    variant={pathname.startsWith("/dashboard/developer") ? "secondary" : "ghost"}
+                                    className="w-full justify-start gap-2"
+                                >
+                                    <LayoutDashboard className="h-4 w-4" />
+                                    OAuth Clients
+                                </Button>
+                            </Link>
                         </>
                     )}
                 </nav>
