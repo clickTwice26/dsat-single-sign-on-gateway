@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,15 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGoogle } from "@fortawesome/free-brands-svg-icons";
 
 export default function LoginPage() {
+    // Capture client_id from URL and store in sessionStorage
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const clientId = params.get("client_id");
+        if (clientId) {
+            sessionStorage.setItem("oauth_redirect_client_id", clientId);
+        }
+    }, []);
+
     return (
         <div className="flex h-screen w-full items-center justify-center bg-muted/40 p-4">
             <Card className="w-full max-w-md">
@@ -60,9 +70,17 @@ export default function LoginPage() {
                             onClick={() => {
                                 const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
                                 const returnTo = params?.get("return_to");
+                                const clientId = params?.get("client_id");
                                 let url = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/login/google`;
+                                const urlParams = new URLSearchParams();
                                 if (returnTo) {
-                                    url += `?return_to=${encodeURIComponent(returnTo)}`;
+                                    urlParams.set("return_to", returnTo);
+                                }
+                                if (clientId) {
+                                    urlParams.set("client_id", clientId);
+                                }
+                                if (urlParams.toString()) {
+                                    url += `?${urlParams.toString()}`;
                                 }
                                 window.location.href = url;
                             }}

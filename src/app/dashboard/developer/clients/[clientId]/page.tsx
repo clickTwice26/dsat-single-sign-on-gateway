@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Loader2, Copy, Trash, RefreshCw, ArrowLeft, Key, ShieldAlert, Globe, Link as LinkIcon, AlertTriangle } from "lucide-react";
+import { Loader2, Copy, Trash, RefreshCw, ArrowLeft, Key, ShieldAlert, Globe, Link as LinkIcon, AlertTriangle, UserCheck, Edit2, Plus, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,6 +46,11 @@ export default function ClientDetailsPage() {
     const [deleting, setDeleting] = useState(false);
     const [newSecret, setNewSecret] = useState<string | null>(null);
 
+    // Callback URL editing state
+    const [isEditingCallbacks, setIsEditingCallbacks] = useState(false);
+    const [editedRedirectUris, setEditedRedirectUris] = useState<string[]>([]);
+    const [isSavingCallbacks, setIsSavingCallbacks] = useState(false);
+
     useEffect(() => {
         const fetchClient = async () => {
             const token = localStorage.getItem("accessToken");
@@ -58,6 +63,7 @@ export default function ClientDetailsPage() {
                 if (response.ok) {
                     const data = await response.json();
                     setClient(data);
+                    setEditedRedirectUris(data.redirect_uris || []);
                 } else {
                     toast.error("Failed to load application details.");
                     router.push("/dashboard/developer");
@@ -127,6 +133,59 @@ export default function ClientDetailsPage() {
             setDeleting(false);
         }
     };
+
+    const handleSaveCallbacks = async () => {
+        setIsSavingCallbacks(true);
+        const token = localStorage.getItem("accessToken");
+        try {
+            // Filter out empty strings
+            const urisToSave = editedRedirectUris.filter(uri => uri.trim() !== "");
+
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/clients/${clientId}`, {
+                method: "PUT",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    ...client,
+                    redirect_uris: urisToSave,
+                }),
+            });
+
+            if (response.ok) {
+                const updatedClient = await response.json();
+                setClient(updatedClient);
+                setEditedRedirectUris(updatedClient.redirect_uris);
+                setIsEditingCallbacks(false);
+                toast.success("Callback URLs updated successfully.");
+            } else {
+                toast.error("Failed to update callback URLs.");
+            }
+        } catch (error) {
+            console.error("Failed to update callbacks:", error);
+            toast.error("An error occurred while saving.");
+        } finally {
+            setIsSavingCallbacks(false);
+        }
+    };
+
+    const addCallbackUrl = () => {
+        setEditedRedirectUris([...editedRedirectUris, ""]);
+    };
+
+    const removeCallbackUrl = (index: number) => {
+        const newUris = [...editedRedirectUris];
+        newUris.splice(index, 1);
+        setEditedRedirectUris(newUris);
+    };
+
+    const updateCallbackUrl = (index: number, value: string) => {
+        const newUris = [...editedRedirectUris];
+        newUris[index] = value;
+        setEditedRedirectUris(newUris);
+    };
+
 
     if (loading) {
         return (
@@ -284,14 +343,69 @@ export default function ClientDetailsPage() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="pt-6">
-                            <div className="space-y-2">
-                                {client.redirect_uris.map((uri, i) => (
-                                    <div key={i} className="flex items-center gap-3 p-3 rounded-md bg-muted/40 border border-muted/60 text-sm font-mono break-all group">
-                                        <div className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
-                                        <span className="flex-1">{uri}</span>
+
+                            {!isEditingCallbacks ? (
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        {client.redirect_uris && client.redirect_uris.length > 0 ? (
+                                            client.redirect_uris.map((uri, i) => (
+                                                <div key={i} className="flex items-center gap-3 p-3 rounded-md bg-muted/40 border border-muted/60 text-sm font-mono break-all group">
+                                                    <div className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
+                                                    <span className="flex-1">{uri}</span>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground italic">No callback URLs defined.</p>
+                                        )}
                                     </div>
-                                ))}
-                            </div>
+                                    <Button variant="outline" size="sm" onClick={() => setIsEditingCallbacks(true)}>
+                                        <Edit2 className="mr-2 h-3 w-3" />
+                                        Edit URLs
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="space-y-3">
+                                        {editedRedirectUris.map((uri, i) => (
+                                            <div key={i} className="flex gap-2">
+                                                <Input
+                                                    value={uri}
+                                                    onChange={(e) => updateCallbackUrl(i, e.target.value)}
+                                                    placeholder="https://example.com/callback"
+                                                    className="font-mono text-sm"
+                                                />
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => removeCallbackUrl(i)}
+                                                    className="text-muted-foreground hover:text-destructive"
+                                                >
+                                                    <Trash className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <Button variant="outline" size="sm" onClick={addCallbackUrl} className="w-full border-dashed">
+                                        <Plus className="mr-2 h-3 w-3" />
+                                        Add URL
+                                    </Button>
+
+                                    <div className="flex gap-2 pt-2">
+                                        <Button onClick={handleSaveCallbacks} disabled={isSavingCallbacks}>
+                                            {isSavingCallbacks && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                            <Save className="mr-2 h-4 w-4" />
+                                            Save Changes
+                                        </Button>
+                                        <Button variant="ghost" onClick={() => {
+                                            setIsEditingCallbacks(false);
+                                            setEditedRedirectUris(client.redirect_uris || []);
+                                        }} disabled={isSavingCallbacks}>
+                                            <X className="mr-2 h-4 w-4" />
+                                            Cancel
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </div>

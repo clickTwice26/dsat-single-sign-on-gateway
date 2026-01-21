@@ -36,7 +36,21 @@ export default function DashboardLayout({
 
     useEffect(() => {
         const fetchUser = async () => {
-            const token = localStorage.getItem("accessToken");
+            // Check localStorage first
+            let token = localStorage.getItem("accessToken");
+
+            // If not in localStorage, check cookie (client-side only)
+            if (!token) {
+                const cookieValue = document.cookie
+                    .split('; ')
+                    .find(row => row.startsWith('accessToken='))
+                    ?.split('=')[1];
+                if (cookieValue) {
+                    token = cookieValue;
+                    localStorage.setItem("accessToken", token);
+                }
+            }
+
             if (!token) {
                 router.push("/login");
                 return;
@@ -44,8 +58,9 @@ export default function DashboardLayout({
 
             try {
                 const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/me`, {
+                    credentials: "include", // Send cookie
                     headers: {
-                        Authorization: `Bearer ${token}`,
+                        Authorization: `Bearer ${token}`, // Still send header for backward compatibility
                     },
                 });
 

@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import AuthorizedClients from "@/components/dashboard/AuthorizedClients";
 
 interface UserData {
     id: string;
@@ -37,25 +38,64 @@ export default function DashboardPage() {
 
     useEffect(() => {
         const fetchUser = async () => {
-            const token = localStorage.getItem("accessToken");
-            if (!token) {
-                router.push("/login");
-                return;
-            }
             try {
                 const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/me`, {
-                    headers: { Authorization: `Bearer ${token}` },
+                    credentials: "include",
                 });
-                if (response.ok) {
-                    const data = await response.json();
-                    setUser(data);
+
+                if (!response.ok) {
+                    router.push("/login");
+                    return;
+                }
+
+                const data = await response.json();
+                setUser(data);
+
+                // Check for stored client_id and auto-redirect to OAuth flow
+                const storedClientId = sessionStorage.getItem("oauth_redirect_client_id");
+                if (storedClientId) {
+                    // Clear the stored client_id to prevent repeated redirects
+                    sessionStorage.removeItem("oauth_redirect_client_id");
+
+                    // Fetch client details to get redirect_uri
+                    try {
+                        const clientResponse = await fetch(
+                            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/oauth2/clients/${storedClientId}`
+                        );
+
+                        if (clientResponse.ok) {
+                            const client = await clientResponse.json();
+
+                            // Initiate OAuth flow
+                            if (client.redirect_uris && client.redirect_uris.length > 0) {
+                                const authUrl = new URL(`${window.location.origin}/authorize`);
+                                authUrl.searchParams.set("client_id", client.client_id);
+                                authUrl.searchParams.set("response_type", "code");
+                                authUrl.searchParams.set("scope", "openid profile email");
+                                authUrl.searchParams.set("redirect_uri", client.redirect_uris[0]);
+
+                                // Generate state for CSRF protection
+                                const state = Math.random().toString(36).substring(7);
+                                authUrl.searchParams.set("state", state);
+                                sessionStorage.setItem("oauth_state", state);
+
+                                // Redirect to authorization page
+                                window.location.href = authUrl.toString();
+                                return;
+                            }
+                        }
+                    } catch (error) {
+                        console.error("Failed to fetch client for auto-redirect:", error);
+                    }
                 }
             } catch (error) {
                 console.error("Failed to fetch user:", error);
+                router.push("/login");
             } finally {
                 setLoading(false);
             }
         };
+
         fetchUser();
     }, [router]);
 
@@ -125,6 +165,9 @@ export default function DashboardPage() {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Authorized Applications */}
+            <AuthorizedClients />
 
             {/* Quick Actions */}
             <Card>

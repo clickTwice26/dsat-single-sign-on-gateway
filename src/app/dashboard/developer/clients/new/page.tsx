@@ -16,10 +16,10 @@ import Link from "next/link";
 
 const clientFormSchema = z.object({
     client_name: z.string().min(2, "Name must be at least 2 characters."),
-    client_uri: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
-    logo_uri: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
+    client_uri: z.string().or(z.literal("")),
+    logo_uri: z.string().or(z.literal("")),
     redirect_uris: z.string().min(1, "At least one callback URL is required."),
-    scope: z.string().default("openid profile email"),
+    scope: z.string().min(1, "Scope is required"),
 });
 
 type ClientFormValues = z.infer<typeof clientFormSchema>;

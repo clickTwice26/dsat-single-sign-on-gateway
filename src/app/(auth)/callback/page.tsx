@@ -17,7 +17,7 @@ function CallbackContent() {
         if (token) {
             // Store token in localStorage (or cookie)
             localStorage.setItem("accessToken", token);
-            document.cookie = `accessToken=${token}; path=/; max-age=604800; SameSite=Lax`; // 7 days
+            document.cookie = `accessToken=${token}; path=/; max-age=2592000; SameSite=Lax`; // 30 days
 
             // Redirect to dashboard or return_to
             if (returnTo) {

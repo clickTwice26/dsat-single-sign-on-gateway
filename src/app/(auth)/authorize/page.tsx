@@ -40,8 +40,20 @@ function AuthorizeContent() {
 
     useEffect(() => {
         const checkAuthAndFetchClient = async () => {
-            // 1. Check Authentication
-            const token = localStorage.getItem("accessToken");
+            // 1. Check Authentication (Check localStorage and Cookies)
+            let token = localStorage.getItem("accessToken");
+
+            if (!token) {
+                const cookieValue = document.cookie
+                    .split('; ')
+                    .find(row => row.startsWith('accessToken='))
+                    ?.split('=')[1];
+                if (cookieValue) {
+                    token = cookieValue;
+                    localStorage.setItem("accessToken", token);
+                }
+            }
+
             if (!token) {
                 // Redirect to login with return_to
                 const returnUrl = `/authorize?${searchParams.toString()}`;
@@ -58,22 +70,67 @@ function AuthorizeContent() {
 
             // 3. Fetch Client Info
             try {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/oauth2/clients/${clientId}`);
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/oauth2/clients/${clientId}`, {
+                    credentials: "include"
+                });
                 if (!res.ok) {
                     throw new Error("Invalid Client ID");
                 }
                 const data = await res.json();
                 setClient(data);
+
+                // 4. Auto-approve for logged-in users (SSO behavior)
+                // Automatically authorize without showing consent screen
+                await autoApprove(token);
             } catch (err) {
                 console.error(err);
                 setError("Invalid or unknown client application.");
-            } finally {
+                setLoading(false);
+            }
+        };
+
+        const autoApprove = async (token: string) => {
+            try {
+                // Construct params for backend
+                const params = new URLSearchParams();
+                if (clientId) params.append("client_id", clientId);
+                if (redirectUri) params.append("redirect_uri", redirectUri);
+                if (responseType) params.append("response_type", responseType);
+                if (scope) params.append("scope", scope);
+                if (state) params.append("state", state);
+                if (nonce) params.append("nonce", nonce);
+                params.append("confirm", "true");
+
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/oauth2/authorize?${params.toString()}`, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    }
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.redirect_uri) {
+                        // Auto-redirect to client application
+                        window.location.href = data.redirect_uri;
+                    } else {
+                        setError("No redirect URI returned from server.");
+                        setLoading(false);
+                    }
+                } else {
+                    setError("Authorization failed.");
+                    setLoading(false);
+                }
+            } catch (err) {
+                console.error(err);
+                setError("An error occurred during authorization.");
                 setLoading(false);
             }
         };
 
         checkAuthAndFetchClient();
-    }, [router, searchParams, clientId, redirectUri, responseType]);
+    }, [router, searchParams, clientId, redirectUri, responseType, scope, state, nonce]);
 
     const handleAuthorize = async () => {
         setAuthorizing(true);
