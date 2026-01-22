@@ -77,6 +77,12 @@ function SettingsView({ user, onUpdate }: { user: UserData; onUpdate: () => void
         phone: user.phone || "",
         profile_image: user.profile_image || "",
     });
+    const [passwordForm, setPasswordForm] = useState({
+        current: "",
+        next: "",
+        confirm: "",
+    });
+    const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -108,6 +114,48 @@ function SettingsView({ user, onUpdate }: { user: UserData; onUpdate: () => void
         });
 
         setIsLoading(false);
+    };
+
+    const handlePasswordChange = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (passwordForm.next !== passwordForm.confirm) {
+            toast.error("New passwords do not match");
+            return;
+        }
+
+        setIsUpdatingPassword(true);
+
+        const passwordPromise = (async () => {
+            const token = localStorage.getItem("accessToken");
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/me/password`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    current_password: passwordForm.current || undefined,
+                    new_password: passwordForm.next,
+                }),
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(data?.detail || "Failed to update password");
+            }
+
+            setPasswordForm({ current: "", next: "", confirm: "" });
+            return data?.message || "Password updated successfully";
+        })();
+
+        toast.promise(passwordPromise, {
+            loading: "Updating password...",
+            success: (data) => `${data}`,
+            error: (err) => err.message || "Failed to update password",
+        });
+
+        passwordPromise.finally(() => setIsUpdatingPassword(false));
     };
 
     return (
@@ -218,6 +266,61 @@ function SettingsView({ user, onUpdate }: { user: UserData; onUpdate: () => void
                         </div>
                     </div>
                 </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Change Password</CardTitle>
+                    <CardDescription>Update your password using your current credentials.</CardDescription>
+                </CardHeader>
+                <form onSubmit={handlePasswordChange}>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="current_password">Current Password (leave blank if none set)</Label>
+                            <Input
+                                id="current_password"
+                                type="password"
+                                value={passwordForm.current}
+                                onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })}
+                                autoComplete="current-password"
+                                placeholder="Enter current password if you have one"
+                            />
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div className="space-y-2">
+                                <Label htmlFor="new_password">New Password</Label>
+                                <Input
+                                    id="new_password"
+                                    type="password"
+                                    value={passwordForm.next}
+                                    onChange={(e) => setPasswordForm({ ...passwordForm, next: e.target.value })}
+                                    autoComplete="new-password"
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="confirm_password">Confirm New Password</Label>
+                                <Input
+                                    id="confirm_password"
+                                    type="password"
+                                    value={passwordForm.confirm}
+                                    onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
+                                    autoComplete="new-password"
+                                    required
+                                />
+                            </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            If you signed up with Google only, set a password to enable email login.
+                        </p>
+                    </CardContent>
+                    <CardFooter className="flex justify-end border-t bg-muted/20 px-6 py-4">
+                        <Button type="submit" disabled={isUpdatingPassword}>
+                            {isUpdatingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Update Password
+                        </Button>
+                    </CardFooter>
+                </form>
             </Card>
         </div>
     );

@@ -119,7 +119,9 @@ function AuthorizeContent() {
                         setLoading(false);
                     }
                 } else {
-                    setError("Authorization failed.");
+                    const data = await res.json().catch(() => null);
+                    const msg = data?.detail?.description || data?.detail?.error || data?.detail || "Authorization failed.";
+                    setError(typeof msg === "string" ? msg : "Authorization failed.");
                     setLoading(false);
                 }
             } catch (err) {
@@ -163,7 +165,9 @@ function AuthorizeContent() {
                     toast.error("No redirect URI returned from server.");
                 }
             } else {
-                toast.error("Authorization failed.");
+                const data = await res.json().catch(() => null);
+                const msg = data?.detail?.description || data?.detail?.error || data?.detail || "Authorization failed.";
+                toast.error(typeof msg === "string" ? msg : "Authorization failed.");
             }
         } catch (err) {
             console.error(err);
