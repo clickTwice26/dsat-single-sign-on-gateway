@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGoogle } from "@fortawesome/free-brands-svg-icons";
 
-export default function LoginPage() {
+function LoginForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [email, setEmail] = useState("");
@@ -47,7 +47,7 @@ export default function LoginPage() {
     const handleGoogleLogin = () => {
         const returnTo = searchParams.get("return_to");
         const clientId = searchParams.get("client_id");
-        const url = new URL(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/login/google`);
+        const url = new URL(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/login/google`);
         if (returnTo) url.searchParams.set("return_to", returnTo);
         if (clientId) url.searchParams.set("client_id", clientId);
         window.location.href = url.toString();
@@ -75,7 +75,7 @@ export default function LoginPage() {
 
         try {
             const response = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/v1/login/access-token`,
+                `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/login/access-token`,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -212,5 +212,13 @@ export default function LoginPage() {
                 </CardFooter>
             </Card>
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={<div className="flex h-screen w-full items-center justify-center">Loading...</div>}>
+            <LoginForm />
+        </Suspense>
     );
 }

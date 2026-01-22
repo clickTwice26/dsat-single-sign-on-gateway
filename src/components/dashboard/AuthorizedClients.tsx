@@ -18,6 +18,8 @@ interface OAuth2Client {
     client_uri?: string;
     logo_uri?: string;
     redirect_uris: string[];
+    description?: string;
+    visible_on_dashboard?: boolean;
 }
 
 export default function AuthorizedClients() {
@@ -139,6 +141,11 @@ export default function AuthorizedClients() {
                                 <h3 className="font-semibold leading-none group-hover:text-primary">
                                     {client.client_name}
                                 </h3>
+                                {client.description && (
+                                    <p className="text-xs text-muted-foreground line-clamp-2">
+                                        {client.description}
+                                    </p>
+                                )}
                                 {client.client_uri && (
                                     <p className="flex items-center gap-1 text-xs text-muted-foreground">
                                         <ExternalLink className="h-3 w-3" />

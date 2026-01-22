@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { PhoneInputField } from "@/components/ui/phone-input";
+import { AlertCircle } from "lucide-react";
 
 const formSchema = z.object({
     fullName: z.string().min(2, {
@@ -48,6 +49,7 @@ const formSchema = z.object({
 export default function RegisterPage() {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -60,9 +62,10 @@ export default function RegisterPage() {
     });
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
+        setError(null);
         setIsLoading(true);
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL} /api/v1 / auth / register`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/register`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -76,14 +79,15 @@ export default function RegisterPage() {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.message || "Registration failed");
+                setError(data.detail || data.message || "Registration failed");
+                setIsLoading(false);
+                return;
             }
 
-            toast.success("Registration successful! Please check your email to verify your account.");
-            router.push("/login");
+            toast.success("Registration successful! Please check your email for the verification code.");
+            router.push(`/verify-email?email=${encodeURIComponent(values.email)}`);
         } catch (error: any) {
-            toast.error(error.message || "An unexpected error occurred.");
-        } finally {
+            setError(error.message || "An unexpected error occurred.");
             setIsLoading(false);
         }
     }
@@ -107,6 +111,12 @@ export default function RegisterPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                    {error && (
+                        <div className="flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                            <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                            <span>{error}</span>
+                        </div>
+                    )}
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                             <FormField

@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Loader2, Copy, Trash, RefreshCw, ArrowLeft, Key, ShieldAlert, Globe, Link as LinkIcon, AlertTriangle, UserCheck, Edit2, Plus, Save, X } from "lucide-react";
+import { Loader2, Copy, Trash, RefreshCw, ArrowLeft, Key, ShieldAlert, Globe, Link as LinkIcon, AlertTriangle, UserCheck, Edit2, Plus, Save, X, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import {
@@ -29,10 +31,12 @@ interface OAuthClient {
     client_name: string;
     client_uri?: string;
     logo_uri?: string;
+    description?: string;
     created_at: string;
     scope: string;
     redirect_uris: string[];
     client_secret?: string;
+    visible_on_dashboard: boolean;
 }
 
 export default function ClientDetailsPage() {
@@ -45,11 +49,18 @@ export default function ClientDetailsPage() {
     const [regenerating, setRegenerating] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [newSecret, setNewSecret] = useState<string | null>(null);
+    const [showSecret, setShowSecret] = useState(false);
 
     // Callback URL editing state
     const [isEditingCallbacks, setIsEditingCallbacks] = useState(false);
     const [editedRedirectUris, setEditedRedirectUris] = useState<string[]>([]);
     const [isSavingCallbacks, setIsSavingCallbacks] = useState(false);
+    
+    // Basic info editing state
+    const [isEditingBasicInfo, setIsEditingBasicInfo] = useState(false);
+    const [editedClientName, setEditedClientName] = useState("");
+    const [editedDescription, setEditedDescription] = useState("");
+    const [isSavingBasicInfo, setIsSavingBasicInfo] = useState(false);
 
     useEffect(() => {
         const fetchClient = async () => {
@@ -64,6 +75,8 @@ export default function ClientDetailsPage() {
                     const data = await response.json();
                     setClient(data);
                     setEditedRedirectUris(data.redirect_uris || []);
+                    setEditedClientName(data.client_name);
+                    setEditedDescription(data.description || "");
                 } else {
                     toast.error("Failed to load application details.");
                     router.push("/dashboard/developer");
@@ -156,17 +169,49 @@ export default function ClientDetailsPage() {
             if (response.ok) {
                 const updatedClient = await response.json();
                 setClient(updatedClient);
-                setEditedRedirectUris(updatedClient.redirect_uris);
                 setIsEditingCallbacks(false);
                 toast.success("Callback URLs updated successfully.");
             } else {
                 toast.error("Failed to update callback URLs.");
             }
         } catch (error) {
-            console.error("Failed to update callbacks:", error);
-            toast.error("An error occurred while saving.");
+            console.error("Failed to save callbacks:", error);
+            toast.error("An error occurred.");
         } finally {
             setIsSavingCallbacks(false);
+        }
+    };
+
+    const handleSaveBasicInfo = async () => {
+        setIsSavingBasicInfo(true);
+        const token = localStorage.getItem("accessToken");
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/clients/${clientId}`, {
+                method: "PUT",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    ...client,
+                    client_name: editedClientName,
+                    description: editedDescription,
+                }),
+            });
+
+            if (response.ok) {
+                const updatedClient = await response.json();
+                setClient(updatedClient);
+                setIsEditingBasicInfo(false);
+                toast.success("Application details updated successfully.");
+            } else {
+                toast.error("Failed to update application details.");
+            }
+        } catch (error) {
+            console.error("Failed to save basic info:", error);
+            toast.error("An error occurred.");
+        } finally {
+            setIsSavingBasicInfo(false);
         }
     };
 
@@ -184,6 +229,34 @@ export default function ClientDetailsPage() {
         const newUris = [...editedRedirectUris];
         newUris[index] = value;
         setEditedRedirectUris(newUris);
+    };
+
+    const handleToggleVisibility = async (checked: boolean) => {
+        const token = localStorage.getItem("accessToken");
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/clients/${clientId}`, {
+                method: "PUT",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    ...client,
+                    visible_on_dashboard: checked,
+                }),
+            });
+
+            if (response.ok) {
+                const updatedClient = await response.json();
+                setClient(updatedClient);
+                toast.success(checked ? "Application is now visible on user dashboard" : "Application hidden from user dashboard");
+            } else {
+                toast.error("Failed to update visibility setting");
+            }
+        } catch (error) {
+            console.error("Failed to toggle visibility:", error);
+            toast.error("An error occurred");
+        }
     };
 
 
@@ -234,9 +307,20 @@ export default function ClientDetailsPage() {
                                     </a>
                                 )}
                             </div>
+                            {client.description && (
+                                <p className="text-sm text-muted-foreground mt-2">{client.description}</p>
+                            )}
                         </div>
                     </div>
-                    {/* Actions if needed */}
+                    <Button
+                        onClick={() => setIsEditingBasicInfo(true)}
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                    >
+                        <Edit2 className="h-4 w-4" />
+                        Edit Details
+                    </Button>
                 </div>
             </div>
 
@@ -299,11 +383,19 @@ export default function ClientDetailsPage() {
                                     ) : (
                                         <div className="flex gap-2 items-center">
                                             <Input
-                                                value="••••••••••••••••••••••••••••••••••••••••••••••••"
+                                                value={showSecret && client.client_secret ? client.client_secret : "••••••••••••••••••••••••••••••••••••••••••••••••"}
                                                 readOnly
                                                 className="font-mono bg-muted/40 flex-1 text-muted-foreground tracking-widest"
                                                 type="text"
                                             />
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => setShowSecret(!showSecret)}
+                                                className="shrink-0"
+                                            >
+                                                {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                            </Button>
                                             <AlertDialog>
                                                 <AlertDialogTrigger asChild>
                                                     <Button variant="outline" className="text-primary hover:text-primary hover:bg-primary/10">
@@ -412,6 +504,38 @@ export default function ClientDetailsPage() {
 
                 {/* Sidebar Config / Danger Zone */}
                 <div className="md:col-span-1 space-y-6">
+                    {/* Visibility Settings */}
+                    <Card className="border-muted/60 shadow-sm">
+                        <CardHeader className="pb-3">
+                            <div className="flex items-center gap-2">
+                                <UserCheck className="h-5 w-5 text-primary" />
+                                <CardTitle>Dashboard Visibility</CardTitle>
+                            </div>
+                            <CardDescription>
+                                Control whether this application appears on users' dashboards
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div className="space-y-0.5">
+                                    <Label htmlFor="visibility-toggle" className="text-sm font-medium">
+                                        Show on Dashboard
+                                    </Label>
+                                    <p className="text-xs text-muted-foreground">
+                                        {client.visible_on_dashboard 
+                                            ? "Users can see and access this app" 
+                                            : "Hidden from users' dashboard"}
+                                    </p>
+                                </div>
+                                <Switch
+                                    id="visibility-toggle"
+                                    checked={client.visible_on_dashboard}
+                                    onCheckedChange={handleToggleVisibility}
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+
                     {/* Danger Zone */}
                     <Card className="border-destructive/30 shadow-sm bg-destructive/5">
                         <CardHeader className="pb-3">
@@ -450,6 +574,75 @@ export default function ClientDetailsPage() {
                     </Card>
                 </div>
             </div>
+
+            {/* Edit Basic Info Dialog */}
+            {isEditingBasicInfo && (
+                <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+                    <Card className="w-full max-w-md">
+                        <CardHeader>
+                            <CardTitle>Edit Application Details</CardTitle>
+                            <CardDescription>Update your application name and description</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-name">Application Name</Label>
+                                <Input
+                                    id="edit-name"
+                                    value={editedClientName}
+                                    onChange={(e) => setEditedClientName(e.target.value)}
+                                    placeholder="My Application"
+                                    disabled={isSavingBasicInfo}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-description">Description</Label>
+                                <Textarea
+                                    id="edit-description"
+                                    value={editedDescription}
+                                    onChange={(e) => setEditedDescription(e.target.value)}
+                                    placeholder="What does your application do?"
+                                    rows={4}
+                                    disabled={isSavingBasicInfo}
+                                    className="resize-none"
+                                />
+                                <p className="text-xs text-muted-foreground">{editedDescription.length}/500</p>
+                            </div>
+                            <div className="flex gap-3 pt-2">
+                                <Button
+                                    onClick={() => {
+                                        setIsEditingBasicInfo(false);
+                                        setEditedClientName(client?.client_name || "");
+                                        setEditedDescription(client?.description || "");
+                                    }}
+                                    variant="outline"
+                                    className="flex-1"
+                                    disabled={isSavingBasicInfo}
+                                >
+                                    <X className="mr-2 h-4 w-4" />
+                                    Cancel
+                                </Button>
+                                <Button
+                                    onClick={handleSaveBasicInfo}
+                                    className="flex-1 bg-primary hover:bg-primary/90"
+                                    disabled={isSavingBasicInfo || !editedClientName.trim()}
+                                >
+                                    {isSavingBasicInfo ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save className="mr-2 h-4 w-4" />
+                                            Save Changes
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
         </div>
     );
 }

@@ -126,6 +126,7 @@ export function UserManagementView() {
                 if (usersRes.ok) {
                     const data = await usersRes.json();
                     if (data.items) {
+                        console.log("Fetched users with items:", data.items);
                         setUsers(data.items);
                         setTotal(data.total);
                     } else {
@@ -236,9 +237,18 @@ export function UserManagementView() {
 
     const handleDeleteUser = async () => {
         if (!deletingUser) return;
+        
+        // Use _id as fallback for id
+        const userId = (deletingUser as any).id || (deletingUser as any)._id;
+        
+        if (!userId) {
+            toast.error("Invalid user ID");
+            return;
+        }
+        
         try {
             const token = localStorage.getItem("accessToken");
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/${deletingUser.id}`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/${userId}`, {
                 method: "DELETE",
                 headers: { "Authorization": `Bearer ${token}` },
             });
@@ -249,7 +259,8 @@ export function UserManagementView() {
                 setDeletingUser(null);
                 setRefreshTrigger(prev => prev + 1);
             } else {
-                toast.error("Failed to delete user");
+                const error = await res.json();
+                toast.error(error.detail || "Failed to delete user");
             }
         } catch (error) {
             toast.error("An error occurred");
