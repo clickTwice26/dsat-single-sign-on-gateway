@@ -13,6 +13,8 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { toast } from "sonner";
+import { useAuth } from "@/components/providers/auth-provider";
+import { api } from "@/lib/api";
 
 interface ClientInfo {
     client_name: string;
@@ -24,6 +26,7 @@ interface ClientInfo {
 function AuthorizeContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { user, loading: authLoading } = useAuth();
 
     // OAuth Params
     const clientId = searchParams.get("client_id");
@@ -34,148 +37,91 @@ function AuthorizeContent() {
     const nonce = searchParams.get("nonce");
 
     const [client, setClient] = useState<ClientInfo | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [pageLoading, setPageLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [authorizing, setAuthorizing] = useState(false);
 
     useEffect(() => {
-        const checkAuthAndFetchClient = async () => {
-            // 1. Check Authentication (Check localStorage and Cookies)
-            let token = localStorage.getItem("accessToken");
+        // Wait for auth check to complete
+        if (authLoading) return;
 
-            if (!token) {
-                const cookieValue = document.cookie
-                    .split('; ')
-                    .find(row => row.startsWith('accessToken='))
-                    ?.split('=')[1];
-                if (cookieValue) {
-                    token = cookieValue;
-                    localStorage.setItem("accessToken", token);
-                }
-            }
+        // If not logged in, redirect to login
+        if (!user) {
+            const returnUrl = `/authorize?${searchParams.toString()}`;
+            router.push(`/login?return_to=${encodeURIComponent(returnUrl)}`);
+            return;
+        }
 
-            if (!token) {
-                // Redirect to login with return_to
-                const returnUrl = `/authorize?${searchParams.toString()}`;
-                router.push(`/login?return_to=${encodeURIComponent(returnUrl)}`);
-                return;
-            }
-
+        const fetchClientAndAutoApprove = async () => {
             // 2. Validate Params
             if (!clientId || !redirectUri || !responseType) {
                 setError("Missing required OAuth parameters.");
-                setLoading(false);
+                setPageLoading(false);
                 return;
             }
 
             // 3. Fetch Client Info
             try {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/oauth2/clients/${clientId}`, {
-                    credentials: "include"
-                });
-                if (!res.ok) {
-                    throw new Error("Invalid Client ID");
-                }
-                const data = await res.json();
-                setClient(data);
+                const clientData = await api.get<ClientInfo>(`/api/v1/clients/${clientId}`);
+                setClient(clientData);
 
                 // 4. Auto-approve for logged-in users (SSO behavior)
-                // Automatically authorize without showing consent screen
-                await autoApprove(token);
-            } catch (err) {
+                await executeAuthorization(true);
+            } catch (err: any) {
                 console.error(err);
-                setError("Invalid or unknown client application.");
-                setLoading(false);
+                setError(err.message || "Invalid or unknown client application.");
+                setPageLoading(false);
             }
         };
 
-        const autoApprove = async (token: string) => {
-            try {
-                // Construct params for backend
-                const params = new URLSearchParams();
-                if (clientId) params.append("client_id", clientId);
-                if (redirectUri) params.append("redirect_uri", redirectUri);
-                if (responseType) params.append("response_type", responseType);
-                if (scope) params.append("scope", scope);
-                if (state) params.append("state", state);
-                if (nonce) params.append("nonce", nonce);
-                params.append("confirm", "true");
+        fetchClientAndAutoApprove();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [authLoading, user, clientId, redirectUri, responseType]);
 
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/oauth2/authorize?${params.toString()}`, {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${token}`,
-                        "Content-Type": "application/json"
-                    }
-                });
-
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.redirect_uri) {
-                        // Auto-redirect to client application
-                        window.location.href = data.redirect_uri;
-                    } else {
-                        setError("No redirect URI returned from server.");
-                        setLoading(false);
-                    }
-                } else {
-                    const data = await res.json().catch(() => null);
-                    const msg = data?.detail?.description || data?.detail?.error || data?.detail || "Authorization failed.";
-                    setError(typeof msg === "string" ? msg : "Authorization failed.");
-                    setLoading(false);
-                }
-            } catch (err) {
-                console.error(err);
-                setError("An error occurred during authorization.");
-                setLoading(false);
-            }
-        };
-
-        checkAuthAndFetchClient();
-    }, [router, searchParams, clientId, redirectUri, responseType, scope, state, nonce]);
-
-    const handleAuthorize = async () => {
-        setAuthorizing(true);
-        const token = localStorage.getItem("accessToken");
+    const executeAuthorization = async (isAutoApprove = false) => {
+        if (!isAutoApprove) setAuthorizing(true);
 
         try {
-            // Construct params for backend
             const params = new URLSearchParams();
             if (clientId) params.append("client_id", clientId);
             if (redirectUri) params.append("redirect_uri", redirectUri);
             if (responseType) params.append("response_type", responseType);
             if (scope) params.append("scope", scope);
-            if (state) params.append("state", state);
-            if (nonce) params.append("nonce", nonce);
+            if (state) params.append("state", state || "");
+            if (nonce) params.append("nonce", nonce || "");
             params.append("confirm", "true");
 
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/oauth2/authorize?${params.toString()}`, {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                    "Content-Type": "application/json"
-                }
-            });
+            const response = await api.post<{ redirect_uri: string }>(
+                `/api/v1/oauth2/authorize?${params.toString()}`,
+                {}
+            );
 
-            if (res.ok) {
-                const data = await res.json();
-                if (data.redirect_uri) {
-                    window.location.href = data.redirect_uri;
-                } else {
-                    toast.error("No redirect URI returned from server.");
-                }
+            if (response && response.redirect_uri) {
+                window.location.href = response.redirect_uri;
             } else {
-                const data = await res.json().catch(() => null);
-                const msg = data?.detail?.description || data?.detail?.error || data?.detail || "Authorization failed.";
-                toast.error(typeof msg === "string" ? msg : "Authorization failed.");
+                const msg = "No redirect URI returned from server.";
+                if (isAutoApprove) {
+                    setError(msg);
+                    setPageLoading(false);
+                } else {
+                    toast.error(msg);
+                }
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            toast.error("An error occurred during authorization.");
+            const msg = err.message || "Authorization failed.";
+            if (isAutoApprove) {
+                setError(msg);
+                setPageLoading(false);
+            } else {
+                toast.error(msg);
+            }
         } finally {
-            setAuthorizing(false);
+            if (!isAutoApprove) setAuthorizing(false);
         }
     };
+
+    const handleAuthorize = () => executeAuthorization(false);
 
     const handleCancel = () => {
         if (redirectUri) {
@@ -185,7 +131,7 @@ function AuthorizeContent() {
         }
     };
 
-    if (loading) {
+    if (authLoading || pageLoading) {
         return (
             <div className="flex h-screen items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />

@@ -69,6 +69,7 @@ export default function DashboardLayout({
                     setUser(data);
                 } else {
                     localStorage.removeItem("accessToken");
+                    document.cookie = "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT";
                     router.push("/login");
                 }
             } catch (error) {

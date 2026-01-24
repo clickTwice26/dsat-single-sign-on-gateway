@@ -27,6 +27,10 @@ export const metadata: Metadata = {
   },
 };
 
+import { AuthProvider } from "@/components/providers/auth-provider";
+
+// ... existing imports
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -41,7 +45,9 @@ export default function RootLayout({
         className={`${spaceGrotesk.variable} ${sourceSerif4.variable} font-sans antialiased`}
         suppressHydrationWarning
       >
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
         <Toaster />
       </body>
     </html>

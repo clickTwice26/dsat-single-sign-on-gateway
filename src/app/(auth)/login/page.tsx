@@ -26,6 +26,14 @@ function LoginForm() {
     const [error, setError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Check if user is already logged in and redirect to dashboard
+    useEffect(() => {
+        const accessToken = localStorage.getItem("accessToken") || document.cookie.split('; ').find(row => row.startsWith('accessToken='))?.split('=')[1];
+        if (accessToken) {
+            router.push("/dashboard");
+        }
+    }, [router]);
+
     // Capture client_id from URL and store in sessionStorage for post-login redirect
     useEffect(() => {
         const clientId = searchParams.get("client_id");
