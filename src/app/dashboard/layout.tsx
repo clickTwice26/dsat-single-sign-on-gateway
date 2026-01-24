@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
     LayoutDashboard, Settings as SettingsIcon, Users, LogOut,
-    Loader2
+    Loader2, Server, BookOpen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -145,11 +145,30 @@ export default function DashboardLayout({
                             </Link>
                             <Link href="/dashboard/developer">
                                 <Button
-                                    variant={pathname.startsWith("/dashboard/developer") ? "secondary" : "ghost"}
+                                    variant={pathname === "/dashboard/developer" || pathname.startsWith("/dashboard/developer/clients") ? "secondary" : "ghost"}
                                     className="w-full justify-start gap-2"
                                 >
                                     <LayoutDashboard className="h-4 w-4" />
                                     OAuth Clients
+                                </Button>
+                            </Link>
+                            <Link href="/dashboard/developer/services">
+                                <Button
+                                    variant={pathname.startsWith("/dashboard/developer/services") ? "secondary" : "ghost"}
+                                    className="w-full justify-start gap-2"
+                                >
+                                    <Server className="h-4 w-4" />
+                                    Service Accounts
+                                </Button>
+                            </Link>
+
+                            <Link href="/dashboard/developer/docs">
+                                <Button
+                                    variant={pathname.startsWith("/dashboard/developer/docs") ? "secondary" : "ghost"}
+                                    className="w-full justify-start gap-2"
+                                >
+                                    <BookOpen className="h-4 w-4" />
+                                    Documentation
                                 </Button>
                             </Link>
                         </>
