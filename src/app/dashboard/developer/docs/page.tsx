@@ -1,18 +1,138 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Terminal, Shield, Key, AlertCircle } from "lucide-react";
+import { Terminal, Shield, Key, AlertCircle, Download } from "lucide-react";
 
 export default function DocsPage() {
+    const handleDownload = () => {
+        const mdContent = `# Service Integration Guide
+
+Complete reference for integrating your applications with DSAT Auth Server.
+
+## Authentication
+
+### API Keys
+Authenticate your service-to-service calls using your secret API Key. All API requests must include your API Key in the \`X-API-Key\` header.
+
+**Example Request:**
+\`\`\`bash
+curl -X POST https://auth.dsatschool.com/api/v1/service/users \\
+  -H "Content-Type: application/json" \\
+  -H "X-API-Key: YOUR_SECRET_KEY" \\
+  -d '{
+    "email": "user@example.com",
+    "full_name": "John Doe",
+    "phone": "+1234567890",
+    "password": "secure_password",
+    "role": "student"
+  }'
+\`\`\`
+
+### IP Whitelisting
+Restrict access to specific IPv4 addresses for additional security.
+
+## API Reference
+
+### POST /users
+Create or synchronize a user from your system.
+**Payload:**
+- email (string, required)
+- full_name (string, required)
+- phone (string, required)
+- password (string, required)
+- role (string, required)
+
+**Response (201 Created):**
+\`\`\`json
+{
+  "id": "65b1...",
+  "email": "user@example.com",
+  "full_name": "John Doe",
+  "phone": "+1234567890",
+  "role": "student",
+  "google_id": null,
+  "discord_id": null,
+  "profile_image": null,
+  "is_active": true,
+  "is_superuser": false,
+  "is_email_verified": false,
+  "is_phone_verified": false,
+  "last_active": null,
+  "created_at": "2024-01-25T12:00:00Z"
+}
+\`\`\`
+
+### GET /users/exists
+Check if a user matches an email or phone number.
+**Query Parameters:**
+- email (string, optional)
+- phone (string, optional)
+
+**Response (200 OK):**
+\`\`\`json
+{
+  "exists": true,
+  "uuid": "65b1...",
+  "email": "user@example.com",
+  "full_name": "John Doe"
+}
+\`\`\`
+
+### GET /users/{id}
+Retrieve the complete profile information for a user.
+
+**Response (200 OK):**
+\`\`\`json
+{
+  "id": "65b1...",
+  "email": "user@example.com",
+  "full_name": "John Doe",
+  "phone": "+1234567890",
+  "role": "student",
+  "google_id": "google-oauth-id",
+  "discord_id": "discord-oauth-id",
+  "profile_image": "https://...",
+  "is_active": true,
+  "is_superuser": false,
+  "is_email_verified": true,
+  "is_phone_verified": true,
+  "last_active": "2024-01-25T12:05:00Z",
+  "created_at": "2024-01-25T12:00:00Z"
+}
+\`\`\`
+
+## Error Handling
+- 401: Unauthorized (Invalid Key)
+- 403: Forbidden (IP Not Allowed)
+- 409: Conflict (Email or Phone already exists)
+`;
+        const blob = new Blob([mdContent], { type: "text/markdown" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "DSAT_Service_Integration_Guide.md";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
     return (
         <div className="space-y-6 max-w-4xl mx-auto pb-10">
-            <div className="space-y-2">
-                <h1 className="text-3xl font-bold tracking-tight">Service Integration Guide</h1>
-                <p className="text-muted-foreground">
-                    Complete reference for integrating your applications with DSAT Auth Server.
-                </p>
+            <div className="flex justify-between items-start gap-4">
+                <div className="space-y-2">
+                    <h1 className="text-3xl font-bold tracking-tight">Service Integration Guide</h1>
+                    <p className="text-muted-foreground">
+                        Complete reference for integrating your applications with DSAT Auth Server.
+                    </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleDownload}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Download .md
+                </Button>
             </div>
 
             <Tabs defaultValue="authentication" className="w-full">
@@ -97,7 +217,24 @@ export default function DocsPage() {
                                     {"{"}<br />
                                     &nbsp;&nbsp;"email": "user@example.com",<br />
                                     &nbsp;&nbsp;"full_name": "John Doe",<br />
-                                    &nbsp;&nbsp;"role": "student" // optional<br />
+                                    &nbsp;&nbsp;"phone": "+1234567890",<br />
+                                    &nbsp;&nbsp;"password": "secure_password",<br />
+                                    &nbsp;&nbsp;"role": "student"<br />
+                                    {"}"}
+                                </div>
+                                <p className="text-sm text-muted-foreground mt-2">Response (201 Created):</p>
+                                <div className="bg-muted p-2 rounded text-xs font-mono">
+                                    {"{"}<br />
+                                    &nbsp;&nbsp;"id": "uuid-string",<br />
+                                    &nbsp;&nbsp;"email": "user@example.com",<br />
+                                    &nbsp;&nbsp;"full_name": "John Doe",<br />
+                                    &nbsp;&nbsp;"phone": "+1234567890",<br />
+                                    &nbsp;&nbsp;"role": "student",<br />
+                                    &nbsp;&nbsp;"is_active": true,<br />
+                                    &nbsp;&nbsp;"is_superuser": false,<br />
+                                    &nbsp;&nbsp;"is_email_verified": false,<br />
+                                    &nbsp;&nbsp;"is_phone_verified": false,<br />
+                                    &nbsp;&nbsp;"created_at": "timestamp"<br />
                                     {"}"}
                                 </div>
                             </div>
@@ -105,9 +242,22 @@ export default function DocsPage() {
                             <div className="space-y-2 border-b pb-4">
                                 <h3 className="font-semibold flex items-center gap-2">
                                     <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-bold">GET</span>
-                                    /users/{"{email}"}/exists
+                                    /users/exists
                                 </h3>
-                                <p className="text-sm text-muted-foreground">Check if a user is already registered in the Auth Server.</p>
+                                <p className="text-sm text-muted-foreground">Check if a user is already registered. Provide at least one parameter.</p>
+                                <div className="bg-muted p-2 rounded text-xs font-mono">
+                                    ?email=user@example.com<br />
+                                    ?phone=+1234567890
+                                </div>
+                                <p className="text-sm text-muted-foreground mt-2">Response (200 OK):</p>
+                                <div className="bg-muted p-2 rounded text-xs font-mono">
+                                    {"{"}<br />
+                                    &nbsp;&nbsp;"exists": true,<br />
+                                    &nbsp;&nbsp;"uuid": "user-id",<br />
+                                    &nbsp;&nbsp;"email": "user@email.com",<br />
+                                    &nbsp;&nbsp;"full_name": "John Doe"<br />
+                                    {"}"}
+                                </div>
                             </div>
 
                             <div className="space-y-2">
@@ -115,7 +265,26 @@ export default function DocsPage() {
                                     <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-bold">GET</span>
                                     /users/{"{id}"}
                                 </h3>
-                                <p className="text-sm text-muted-foreground">Retrieve public profile details for a user.</p>
+                                <p className="text-sm text-muted-foreground">Retrieve the complete profile information for a user.</p>
+                                <p className="text-sm text-muted-foreground mt-2">Response (200 OK):</p>
+                                <div className="bg-muted p-2 rounded text-xs font-mono">
+                                    {"{"}<br />
+                                    &nbsp;&nbsp;"id": "user-id",<br />
+                                    &nbsp;&nbsp;"email": "user@email.com",<br />
+                                    &nbsp;&nbsp;"full_name": "John Doe",<br />
+                                    &nbsp;&nbsp;"phone": "+1234567890",<br />
+                                    &nbsp;&nbsp;"role": "student",<br />
+                                    &nbsp;&nbsp;"google_id": "google-id",<br />
+                                    &nbsp;&nbsp;"discord_id": "discord-id",<br />
+                                    &nbsp;&nbsp;"profile_image": "url",<br />
+                                    &nbsp;&nbsp;"is_active": true,<br />
+                                    &nbsp;&nbsp;"is_superuser": false,<br />
+                                    &nbsp;&nbsp;"is_email_verified": true,<br />
+                                    &nbsp;&nbsp;"is_phone_verified": true,<br />
+                                    &nbsp;&nbsp;"last_active": "timestamp",<br />
+                                    &nbsp;&nbsp;"created_at": "timestamp"<br />
+                                    {"}"}
+                                </div>
                             </div>
 
                         </CardContent>
