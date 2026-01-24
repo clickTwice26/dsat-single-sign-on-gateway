@@ -112,7 +112,9 @@ function LoginForm() {
             setAccessTokenCookie(data.access_token);
 
             const returnTo = searchParams.get("return_to");
-            router.push(returnTo || "/dashboard");
+            // Use window.location.href to ensure a hard redirect, which is often safer for OAuth flows
+            // especially when redirecting back to the same page with different params
+            window.location.href = returnTo || "/dashboard";
         } catch (err) {
             console.error("Login failed", err);
             setError("Something went wrong. Please try again.");
