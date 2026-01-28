@@ -20,9 +20,10 @@ interface PhoneInputProps {
     onChange: (value: E164Number) => void;
     className?: string;
     placeholder?: string;
+    disabled?: boolean;
 }
 
-export const PhoneInputField = ({ value, onChange, className, placeholder }: PhoneInputProps) => {
+export const PhoneInputField = ({ value, onChange, className, placeholder, disabled }: PhoneInputProps) => {
     return (
         <div className={cn("grid gap-2", className)}>
             <BasePhoneInput
@@ -31,6 +32,7 @@ export const PhoneInputField = ({ value, onChange, className, placeholder }: Pho
                 value={value}
                 onChange={onChange}
                 placeholder={placeholder}
+                disabled={disabled}
                 className={cn(
                     "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
                     "phone-input-container" // Hook for custom CSS if needed
@@ -42,7 +44,8 @@ export const PhoneInputField = ({ value, onChange, className, placeholder }: Pho
                     "--PhoneInputCountrySelectArrow-opacity": "0.5",
                 } as React.CSSProperties}
                 numberInputProps={{
-                    className: "flex h-9 w-full rounded-md bg-transparent px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 border-none focus:ring-0 outline-none"
+                    className: "flex h-9 w-full rounded-md bg-transparent px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 border-none focus:ring-0 outline-none",
+                    disabled: disabled
                 }}
             />
             <style jsx global>{`

@@ -16,11 +16,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, ArrowLeft, Mail, ShieldCheck, Lock } from "lucide-react";
 
+import { PhoneInputField } from "@/components/ui/phone-input";
+
 type Step = "email" | "reset";
 
 export default function ForgotPasswordPage() {
     const [step, setStep] = useState<Step>("email");
     const [email, setEmail] = useState("");
+    const [phone, setPhone] = useState("");
+    const [targetEmail, setTargetEmail] = useState("");
     const [otp, setOtp] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
@@ -32,13 +36,23 @@ export default function ForgotPasswordPage() {
     const handleRequestReset = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+
+        if (!email && !phone) {
+            setError("Please provide either your email address or phone number");
+            return;
+        }
+
         setLoading(true);
 
         try {
+            const body: any = {};
+            if (email) body.email = email;
+            if (phone) body.phone = phone;
+
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/password-reset/request`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email }),
+                body: JSON.stringify(body),
             });
 
             const data = await response.json();
@@ -48,6 +62,7 @@ export default function ForgotPasswordPage() {
             }
 
             setMessage(data.message);
+            setTargetEmail(data.email || "your registered email");
             setStep("reset");
         } catch (err: any) {
             setError(err.message);
@@ -92,7 +107,7 @@ export default function ForgotPasswordPage() {
     };
 
     return (
-        <div className="flex h-screen w-full items-center justify-center bg-muted/40 p-4">
+        <div className="flex min-h-screen w-full items-center justify-center bg-muted/40 p-4">
             <Card className="w-full max-w-md border-primary/10 shadow-xl">
                 <CardHeader className="space-y-1">
                     <div className="flex justify-center mb-4">
@@ -109,8 +124,12 @@ export default function ForgotPasswordPage() {
                     </CardTitle>
                     <CardDescription className="text-center">
                         {step === "email"
-                            ? "Enter your email address and we'll send you an OTP to reset your password."
-                            : `Enter the code sent to ${email} and your new password.`}
+                            ? "Enter your email OR phone number to identify your account."
+                            : (
+                                <>
+                                    Enter the code sent to <span className="font-bold text-foreground">{targetEmail}</span> and your new password.
+                                </>
+                            )}
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -135,7 +154,24 @@ export default function ForgotPasswordPage() {
                                     placeholder="m@example.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    required
+                                    disabled={loading}
+                                    className="h-11"
+                                />
+                            </div>
+                            <div className="relative py-2">
+                                <div className="absolute inset-0 flex items-center">
+                                    <span className="w-full border-t" />
+                                </div>
+                                <div className="relative flex justify-center text-xs uppercase">
+                                    <span className="bg-card px-2 text-muted-foreground">Or</span>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="phone">Phone number</Label>
+                                <PhoneInputField
+                                    value={phone}
+                                    onChange={setPhone}
+                                    placeholder="Enter your registered phone"
                                     disabled={loading}
                                     className="h-11"
                                 />
