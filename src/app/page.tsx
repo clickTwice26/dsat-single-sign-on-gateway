@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,8 +14,11 @@ import {
   faUserCheck,
   faBolt,
 } from "@fortawesome/free-solid-svg-icons";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export default function Home() {
+  const { isAuthenticated, loading } = useAuth();
+
   return (
     <div className="flex min-h-screen flex-col">
       <header className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -22,12 +27,23 @@ export default function Home() {
           <span>DSAT Auth</span>
         </div>
         <nav className="flex items-center gap-4">
-          <Link href="/login">
-            <Button variant="ghost">Sign In</Button>
-          </Link>
-          <Link href="/register">
-            <Button>Get Started</Button>
-          </Link>
+          {loading ? (
+            // Optional: Render nothing or a skeleton while loading to prevent flicker
+            null
+          ) : isAuthenticated ? (
+            <Link href="/dashboard">
+              <Button>Dashboard</Button>
+            </Link>
+          ) : (
+            <>
+              <Link href="/login">
+                <Button variant="ghost">Sign In</Button>
+              </Link>
+              <Link href="/register">
+                <Button>Get Started</Button>
+              </Link>
+            </>
+          )}
         </nav>
       </header>
       <main className="flex-1">
@@ -41,16 +57,28 @@ export default function Home() {
             reliable authentication for the next generation of students.
           </p>
           <div className="flex items-center gap-4">
-            <Link href="/register">
-              <Button size="lg" className="px-8">
-                Create Account
-              </Button>
-            </Link>
-            <Link href="/login">
-              <Button size="lg" variant="outline" className="px-8">
-                Sign In
-              </Button>
-            </Link>
+            {loading ? (
+              null
+            ) : isAuthenticated ? (
+              <Link href="/dashboard">
+                <Button size="lg" className="px-8">
+                  Go to Dashboard
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Link href="/register">
+                  <Button size="lg" className="px-8">
+                    Create Account
+                  </Button>
+                </Link>
+                <Link href="/login">
+                  <Button size="lg" variant="outline" className="px-8">
+                    Sign In
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </section>
 

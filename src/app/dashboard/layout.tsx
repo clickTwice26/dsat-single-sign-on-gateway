@@ -10,6 +10,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
+import { PhoneRequirementModal } from "@/components/dashboard/phone-requirement-modal";
+import { PasswordRequirementModal } from "@/components/dashboard/password-requirement-modal";
+
 interface UserData {
     id: string;
     email: string;
@@ -22,6 +25,7 @@ interface UserData {
     created_at?: string;
     phone?: string;
     role?: string;
+    has_password?: boolean;
 }
 
 export default function DashboardLayout({
@@ -34,52 +38,52 @@ export default function DashboardLayout({
     const [user, setUser] = useState<UserData | null>(null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchUser = async () => {
-            // Check localStorage first
-            let token = localStorage.getItem("accessToken");
+    const fetchUser = async () => {
+        // Check localStorage first
+        let token = localStorage.getItem("accessToken");
 
-            // If not in localStorage, check cookie (client-side only)
-            if (!token) {
-                const cookieValue = document.cookie
-                    .split('; ')
-                    .find(row => row.startsWith('accessToken='))
-                    ?.split('=')[1];
-                if (cookieValue) {
-                    token = cookieValue;
-                    localStorage.setItem("accessToken", token);
-                }
+        // If not in localStorage, check cookie (client-side only)
+        if (!token) {
+            const cookieValue = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('accessToken='))
+                ?.split('=')[1];
+            if (cookieValue) {
+                token = cookieValue;
+                localStorage.setItem("accessToken", token);
             }
+        }
 
-            if (!token) {
+        if (!token) {
+            router.push("/login");
+            return;
+        }
+
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/me`, {
+                credentials: "include", // Send cookie
+                headers: {
+                    Authorization: `Bearer ${token}`, // Still send header for backward compatibility
+                },
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setUser(data);
+            } else {
+                localStorage.removeItem("accessToken");
+                document.cookie = "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT";
                 router.push("/login");
-                return;
             }
+        } catch (error) {
+            console.error("Failed to fetch user:", error);
+            router.push("/login?error=fetch_failed");
+        } finally {
+            setLoading(false);
+        }
+    };
 
-            try {
-                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/me`, {
-                    credentials: "include", // Send cookie
-                    headers: {
-                        Authorization: `Bearer ${token}`, // Still send header for backward compatibility
-                    },
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    setUser(data);
-                } else {
-                    localStorage.removeItem("accessToken");
-                    document.cookie = "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT";
-                    router.push("/login");
-                }
-            } catch (error) {
-                console.error("Failed to fetch user:", error);
-                router.push("/login?error=fetch_failed");
-            } finally {
-                setLoading(false);
-            }
-        };
-
+    useEffect(() => {
         fetchUser();
     }, [router]);
 
@@ -101,6 +105,52 @@ export default function DashboardLayout({
     }
 
     if (!user) return null;
+
+    // Check if phone number is required but missing
+    const showPhoneModal = !!user && !user.phone;
+
+    if (showPhoneModal) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center bg-muted/40">
+                <PhoneRequirementModal
+                    open={true}
+                    onUpdate={fetchUser}
+                />
+                <div className="flex flex-col items-center gap-4 text-center p-8">
+                    <div className="h-12 w-12 rounded-full bg-yellow-100 p-2 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400">
+                        <Loader2 className="h-8 w-8 animate-spin" />
+                    </div>
+                    <h2 className="text-lg font-semibold">Action Required</h2>
+                    <p className="text-muted-foreground max-w-sm">
+                        Please provide your phone number to continue accessing the dashboard.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    // 2. Password (Second Priority) - Only if phone is set
+    const showPasswordModal = !!user && user.phone && user.has_password === false;
+
+    if (showPasswordModal) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center bg-muted/40">
+                <PasswordRequirementModal
+                    open={true}
+                    onUpdate={fetchUser}
+                />
+                <div className="flex flex-col items-center gap-4 text-center p-8">
+                    <div className="h-12 w-12 rounded-full bg-red-100 p-2 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                        <Loader2 className="h-8 w-8 animate-spin" />
+                    </div>
+                    <h2 className="text-lg font-semibold">Security Update Required</h2>
+                    <p className="text-muted-foreground max-w-sm">
+                        Please set a password to secure your account.
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     const isDeveloper = user?.role === "developer" || user?.is_superuser;
 

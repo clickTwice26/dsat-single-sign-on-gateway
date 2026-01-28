@@ -12,6 +12,8 @@ interface User {
     is_superuser: boolean;
     profile_image?: string;
     role?: string;
+    phone?: string;
+    has_password?: boolean;
 }
 
 interface AuthContextType {

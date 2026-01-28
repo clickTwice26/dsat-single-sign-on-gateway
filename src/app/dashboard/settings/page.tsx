@@ -100,7 +100,8 @@ function SettingsView({ user, onUpdate }: { user: UserData; onUpdate: () => void
             });
 
             if (!response.ok) {
-                throw new Error("Failed to update profile");
+                const data = await response.json();
+                throw new Error(data.detail || "Failed to update profile");
             }
 
             await onUpdate();
@@ -110,7 +111,7 @@ function SettingsView({ user, onUpdate }: { user: UserData; onUpdate: () => void
         toast.promise(promise, {
             loading: "Updating profile...",
             success: (data) => `${data}`,
-            error: "Failed to update profile",
+            error: (err) => err.message || "Failed to update profile",
         });
 
         setIsLoading(false);
