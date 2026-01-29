@@ -3,9 +3,20 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
     LayoutDashboard, Settings as SettingsIcon, Users, LogOut,
-    Loader2, Server, BookOpen
+    Loader2, Server, BookOpen, GraduationCap, Receipt, Menu
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -37,6 +48,7 @@ export default function DashboardLayout({
     const pathname = usePathname();
     const [user, setUser] = useState<UserData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
 
     const fetchUser = async () => {
         // Check localStorage first
@@ -154,91 +166,129 @@ export default function DashboardLayout({
 
     const isDeveloper = user?.role === "developer" || user?.is_superuser;
 
+    const SidebarContent = () => (
+        <>
+            <div className="flex h-14 items-center border-b px-6">
+                <span className="text-lg font-bold">DSAT School</span>
+            </div>
+            <nav className="flex-1 space-y-2 p-4">
+                <Link href="/dashboard">
+                    <Button
+                        variant={pathname === "/dashboard" ? "secondary" : "ghost"}
+                        className="w-full justify-start gap-2"
+                    >
+                        <LayoutDashboard className="h-4 w-4" />
+                        Dashboard
+                    </Button>
+                </Link>
+                <Link href="/dashboard/courses">
+                    <Button
+                        variant={pathname === "/dashboard/courses" ? "secondary" : "ghost"}
+                        className="w-full justify-start gap-2"
+                    >
+                        <GraduationCap className="h-4 w-4" />
+                        Courses
+                    </Button>
+                </Link>
+                <Link href="/dashboard/billing">
+                    <Button
+                        variant={pathname === "/dashboard/billing" ? "secondary" : "ghost"}
+                        className="w-full justify-start gap-2"
+                    >
+                        <Receipt className="h-4 w-4" />
+                        Billing
+                    </Button>
+                </Link>
+                <Link href="/dashboard/settings">
+                    <Button
+                        variant={pathname === "/dashboard/settings" ? "secondary" : "ghost"}
+                        className="w-full justify-start gap-2"
+                    >
+                        <SettingsIcon className="h-4 w-4" />
+                        Settings
+                    </Button>
+                </Link>
+
+                {isDeveloper && (
+                    <>
+                        <Separator className="my-2" />
+                        <Link href="/dashboard/users">
+                            <Button
+                                variant={pathname === "/dashboard/users" ? "secondary" : "ghost"}
+                                className="w-full justify-start gap-2"
+                            >
+                                <Users className="h-4 w-4" />
+                                User Management
+                            </Button>
+                        </Link>
+                        <Link href="/dashboard/developer">
+                            <Button
+                                variant={pathname === "/dashboard/developer" || pathname.startsWith("/dashboard/developer/clients") ? "secondary" : "ghost"}
+                                className="w-full justify-start gap-2"
+                            >
+                                <LayoutDashboard className="h-4 w-4" />
+                                OAuth Clients
+                            </Button>
+                        </Link>
+                        <Link href="/dashboard/developer/services">
+                            <Button
+                                variant={pathname.startsWith("/dashboard/developer/services") ? "secondary" : "ghost"}
+                                className="w-full justify-start gap-2"
+                            >
+                                <Server className="h-4 w-4" />
+                                Service Accounts
+                            </Button>
+                        </Link>
+
+                        <Link href="/dashboard/developer/docs">
+                            <Button
+                                variant={pathname.startsWith("/dashboard/developer/docs") ? "secondary" : "ghost"}
+                                className="w-full justify-start gap-2"
+                            >
+                                <BookOpen className="h-4 w-4" />
+                                Documentation
+                            </Button>
+                        </Link>
+                    </>
+                )}
+            </nav>
+            <div className="border-t p-4">
+                <Button
+                    variant="outline"
+                    className="w-full justify-start gap-2 text-destructive hover:text-destructive"
+                    onClick={() => setLogoutDialogOpen(true)}
+                >
+                    <LogOut className="h-4 w-4" />
+                    Log out
+                </Button>
+            </div>
+        </>
+    );
+
     return (
         <div className="flex h-screen w-full bg-muted/40">
             {/* Sidebar (Desktop) */}
             <aside className="hidden w-64 flex-col border-r bg-background md:flex">
-                <div className="flex h-14 items-center border-b px-6">
-                    <span className="text-lg font-bold">DSAT School</span>
-                </div>
-                <nav className="flex-1 space-y-2 p-4">
-                    <Link href="/dashboard">
-                        <Button
-                            variant={pathname === "/dashboard" ? "secondary" : "ghost"}
-                            className="w-full justify-start gap-2"
-                        >
-                            <LayoutDashboard className="h-4 w-4" />
-                            Dashboard
-                        </Button>
-                    </Link>
-                    <Link href="/dashboard/settings">
-                        <Button
-                            variant={pathname === "/dashboard/settings" ? "secondary" : "ghost"}
-                            className="w-full justify-start gap-2"
-                        >
-                            <SettingsIcon className="h-4 w-4" />
-                            Settings
-                        </Button>
-                    </Link>
-
-                    {isDeveloper && (
-                        <>
-                            <Separator className="my-2" />
-                            <Link href="/dashboard/users">
-                                <Button
-                                    variant={pathname === "/dashboard/users" ? "secondary" : "ghost"}
-                                    className="w-full justify-start gap-2"
-                                >
-                                    <Users className="h-4 w-4" />
-                                    User Management
-                                </Button>
-                            </Link>
-                            <Link href="/dashboard/developer">
-                                <Button
-                                    variant={pathname === "/dashboard/developer" || pathname.startsWith("/dashboard/developer/clients") ? "secondary" : "ghost"}
-                                    className="w-full justify-start gap-2"
-                                >
-                                    <LayoutDashboard className="h-4 w-4" />
-                                    OAuth Clients
-                                </Button>
-                            </Link>
-                            <Link href="/dashboard/developer/services">
-                                <Button
-                                    variant={pathname.startsWith("/dashboard/developer/services") ? "secondary" : "ghost"}
-                                    className="w-full justify-start gap-2"
-                                >
-                                    <Server className="h-4 w-4" />
-                                    Service Accounts
-                                </Button>
-                            </Link>
-
-                            <Link href="/dashboard/developer/docs">
-                                <Button
-                                    variant={pathname.startsWith("/dashboard/developer/docs") ? "secondary" : "ghost"}
-                                    className="w-full justify-start gap-2"
-                                >
-                                    <BookOpen className="h-4 w-4" />
-                                    Documentation
-                                </Button>
-                            </Link>
-                        </>
-                    )}
-                </nav>
-                <div className="border-t p-4">
-                    <Button variant="outline" className="w-full justify-start gap-2 text-destructive hover:text-destructive" onClick={handleLogout}>
-                        <LogOut className="h-4 w-4" />
-                        Log out
-                    </Button>
-                </div>
+                <SidebarContent />
             </aside>
 
             {/* Main Content */}
             <main className="flex-1 overflow-y-auto">
                 <div className="flex h-14 items-center justify-between border-b bg-background px-6 md:hidden">
-                    <span className="font-bold">DSAT School</span>
-                    <Button variant="ghost" size="icon" onClick={handleLogout}>
-                        <LogOut className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-4">
+                        <Sheet>
+                            <SheetTrigger asChild>
+                                <Button variant="ghost" size="icon" className="-ml-3">
+                                    <Menu className="h-5 w-5" />
+                                </Button>
+                            </SheetTrigger>
+                            <SheetContent side="left" className="w-[80%] max-w-[300px] p-0 flex flex-col">
+                                <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+                                <SidebarContent />
+                            </SheetContent>
+                        </Sheet>
+                        <span className="font-bold">DSAT School</span>
+                    </div>
                 </div>
 
                 <div className="p-6 space-y-8">
@@ -266,6 +316,23 @@ export default function DashboardLayout({
                     {children}
                 </div>
             </main>
+
+            <AlertDialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure you want to log out?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            You will be redirected to the login page.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleLogout} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Log out
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
