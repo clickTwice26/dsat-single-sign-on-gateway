@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
     LayoutDashboard, Settings as SettingsIcon, Users, LogOut,
-    Loader2, Server, BookOpen, GraduationCap, Receipt, Menu
+    Loader2, Server, BookOpen, GraduationCap, Receipt, Menu, ExternalLink
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -164,6 +164,7 @@ export default function DashboardLayout({
         );
     }
 
+    const isAdminOrDeveloper = user?.role === "admin" || user?.role === "developer" || user?.is_superuser;
     const isDeveloper = user?.role === "developer" || user?.is_superuser;
 
     const SidebarContent = () => (
@@ -295,12 +296,23 @@ export default function DashboardLayout({
                     {/* Welcome Section */}
                     <div className="flex flex-col gap-2">
                         {pathname === "/dashboard" && (
-                            <>
-                                <h1 className="text-3xl font-bold tracking-tight capitalize">Dashboard</h1>
-                                <p className="text-muted-foreground">
-                                    Welcome back, <span className="font-medium text-foreground">{user.full_name}</span>
-                                </p>
-                            </>
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div>
+                                    <h1 className="text-3xl font-bold tracking-tight capitalize">Dashboard</h1>
+                                    <p className="text-muted-foreground">
+                                        Welcome back, <span className="font-medium text-foreground">{user.full_name}</span>
+                                    </p>
+                                </div>
+                                {isAdminOrDeveloper && (
+                                    <Button
+                                        onClick={() => window.open('https://dsatschool.com/platform/login', '_blank')}
+                                        className="gap-2 shadow-sm"
+                                    >
+                                        <ExternalLink className="h-4 w-4" />
+                                        Edit Landing Page
+                                    </Button>
+                                )}
+                            </div>
                         )}
                         {pathname === "/dashboard/settings" && (
                             <>

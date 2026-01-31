@@ -81,6 +81,13 @@ function LoginForm() {
     const handlePasswordLogin = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         setError(null);
+
+        // Validate email and password after button press
+        if (!email || !password) {
+            setError("Please enter both email and password.");
+            return;
+        }
+
         setIsSubmitting(true);
 
         try {
@@ -144,7 +151,12 @@ function LoginForm() {
                 <CardContent className="space-y-4">
                     {activeError ? (
                         <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md border border-destructive/20 text-center">
-                            {activeError}
+                            <p>{activeError}</p>
+                            {(activeError.toLowerCase().includes("invalid") || activeError.toLowerCase().includes("password")) && (
+                                <p className="mt-2 text-xs text-muted-foreground">
+                                    Getting incorrect password? Please <Link href="/forgot-password" className="font-medium underline hover:text-primary">reset your password</Link>.
+                                </p>
+                            )}
                         </div>
                     ) : null}
 
@@ -197,7 +209,7 @@ function LoginForm() {
                         <Button
                             type="submit"
                             className="w-full font-bold"
-                            disabled={isSubmitting || !email || !password}
+                            disabled={isSubmitting}
                         >
                             {isSubmitting ? "Signing in..." : "Sign In"}
                         </Button>
